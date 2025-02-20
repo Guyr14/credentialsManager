@@ -2,7 +2,6 @@
 import {User} from "./User";
 import {TIME_TO_BLOCK, TIME_TO_NOTIFICATION} from "./Utils";
 import {sendMail} from "./mailManager";
-import {updateUserIsBlocked} from "./databaseActions";
 
 export function checkExpiredTime(user: User) {
     const timeoutUntilNotification = user.getNotificationTime() - Date.now();
@@ -30,7 +29,6 @@ export function blockUserIfPasswordDontChanged(user: User, timeUntilBlocked: num
     if(user.passwordLastTimeChanged > timeUntilBlocked - TIME_TO_BLOCK) {
         return;
     }
-    updateUserIsBlocked(user, user.getUserName());
 
     sendMail(user.getEmail(),  'hi ' + user.getFullName()+ ' your user is blocked until you update your password!');
 }
