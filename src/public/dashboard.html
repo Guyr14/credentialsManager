@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Password Manager Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-image: url('/images/dashboard-background.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            min-height: 100vh;
+        }
+
+        .dashboard-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(5px);
+        }
+
+        .add-credential-form {
+            background-color: rgba(248, 249, 250, 0.9);
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        button {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        #loginBtn {
+            background-color: #1877f2;
+            color: white;
+        }
+
+        #registerBtn {
+            background-color: #42b72a;
+            color: white;
+        }
+
+        .error-message {
+            color: red;
+            margin-top: 10px;
+            text-align: center;
+        }
+
+        .password-strength {
+            margin-top: 5px;
+            height: 5px;
+            background-color: #ddd;
+            border-radius: 3px;
+            overflow: hidden;
+            display: none;
+        }
+
+        .strength-bar {
+            height: 100%;
+            width: 0;
+            transition: width 0.3s ease-in-out;
+        }
+
+        .strength-0 { width: 0%; background-color: #ff4444; }
+        .strength-1 { width: 20%; background-color: #ff4444; }
+        .strength-2 { width: 40%; background-color: #ffa700; }
+        .strength-3 { width: 60%; background-color: #ffbb00; }
+        .strength-4 { width: 80%; background-color: #9ccc65; }
+        .strength-5 { width: 100%; background-color: #43a047; }
+
+        .password-feedback {
+            font-size: 12px;
+            margin-top: 5px;
+            color: #666;
+            display: none;
+        }
+
+        .generate-password-btn {
+            background-color: #6c757d;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            margin-top: 5px;
+            display: none;
+            width: 100%;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .password-cell {
+            font-family: monospace;
+        }
+
+        .credentials-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .credentials-table th,
+        .credentials-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .credentials-table th {
+            background-color: rgba(248, 249, 250, 0.9);
+            font-weight: bold;
+        }
+
+        .button-primary {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .button-danger {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .success-message {
+            color: #28a745;
+            margin-top: 10px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .update-password-form {
+            background-color: rgba(248, 249, 250, 0.9);
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        #updatePasswordMessage {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+<div class="dashboard-container">
+    <div class="header">
+        <h1>Password Manager</h1>
+        <div>
+            <span id="userDisplay"></span>
+            <button class="button" onclick="logout()">Logout</button>
+            <button class="button" onclick="toggleUpdatePasswordForm()">Update Password</button>
+        </div>
+    </div>
+
+    <div class="add-credential-form">
+        <h2>Add New Credential</h2>
+        <form id="addCredentialForm" onsubmit="handleAddCredential(event)">
+            <div class="form-group">
+                <label for="serviceName">Service Name:</label>
+                <input type="text" id="serviceName" required placeholder="e.g., Gmail, Moodle, etc.">
+            </div>
+            <div class="form-group">
+                <label for="username">Username:</label>
+                <input type="text" id="username" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <input type="password" id="password" required>
+            </div>
+            <button type="submit" class="button button-primary">Add Credential</button>
+        </form>
+        <div id="formMessage"></div>
+    </div>
+    <div class="update-password-form" style="display: none;">
+        <h2>Update Password</h2>
+        <form id="updatePasswordForm" onsubmit="handleUpdatePassword(event)">
+            <div class="form-group">
+                <label for="oldPassword">Old Password:</label>
+                <input type="password" id="oldPassword" required>
+            </div>
+            <div class="form-group">
+                <label for="newPassword">New Password:</label>
+                <input type="password" id="newPassword" required>
+                <div class="password-strength">
+                    <div class="strength-bar"></div>
+                </div>
+                <div class="password-feedback"></div>
+                <button type="button" class="generate-password-btn" onclick="generatePassword('newPassword')">Generate Strong Password</button>
+            </div>
+            <button type="submit" class="button button-primary">Update Password</button>
+            <button type="button" class="button" onclick="toggleUpdatePasswordForm()">Cancel</button>
+        </form>
+        <div id="updatePasswordMessage"></div>
+    </div>
+    <div class="credentials-list">
+        <h2>Stored Credentials</h2>
+        <table class="credentials-table">
+            <thead>
+            <tr>
+                <th>Service</th>
+                <th>Username</th>
+                <th>Password</th>
+                <th>Date Added</th>
+                <th>Actions</th>
+            </tr>
+            </thead>
+            <tbody id="credentialsTableBody">
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    let currentUser = null;
+
+    function toggleUpdatePasswordForm() {
+        const form = document.querySelector('.update-password-form');
+        form.style.display = form.style.display === 'none' ? 'block' : 'none';
+    }
+
+    async function handleUpdatePassword(event) {
+        event.preventDefault();
+
+        const oldPassword = document.getElementById('oldPassword').value;
+        const newPassword = document.getElementById('newPassword').value;
+        const messageDiv = document.getElementById('updatePasswordMessage');
+
+        if (!oldPassword || !newPassword) {
+            messageDiv.className = 'error-message';
+            messageDiv.textContent = 'Both old and new passwords are required';
+            return;
+        }
+
+        try {
+            const response = await fetch('/update-password', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    username: currentUser,
+                    oldPassword,
+                    newPassword
+                }),
+            });
+
+            const data = await response.json();
+
+            messageDiv.className = data.success ? 'success-message' : 'error-message';
+            messageDiv.textContent = data.message;
+
+            if (data.success) {
+                document.getElementById('updatePasswordForm').reset();
+                setTimeout(() => {
+                    toggleUpdatePasswordForm();
+                    messageDiv.textContent = '';
+                }, 2000);
+            }
+        } catch (error) {
+            messageDiv.className = 'error-message';
+            messageDiv.textContent = 'Error updating password';
+        }
+    }
+
+    window.onload = function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const username = urlParams.get('username');
+
+        if (!username) {
+            window.location.href = '/';
+            return;
+        }
+
+        currentUser = username;
+        document.getElementById('userDisplay').textContent = `Logged in as: ${username}`;
+        loadCredentials();
+    };
+
+    async function loadCredentials() {
+        try {
+            const response = await fetch(`/api/credentials/${currentUser}`);
+            const data = await response.json();
+
+            if (data.success) {
+                displayCredentials(data.credentials);
+            } else {
+                showMessage('Error loading credentials', true);
+            }
+        } catch (error) {
+            showMessage('Error loading credentials', true);
+        }
+    }
+
+    function displayCredentials(credentials) {
+        const tbody = document.getElementById('credentialsTableBody');
+        tbody.innerHTML = '';
+
+        credentials.forEach(cred => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+            <td>${escapeHtml(cred.serviceName)}</td>
+            <td>${escapeHtml(cred.username)}</td>
+            <td class="password-cell">
+                <span class="password-hidden">••••••••</span>
+                <span class="password-visible hidden">${escapeHtml(cred.password)}</span>
+                <button class="button" onclick="togglePassword(this)">Show</button>
+            </td>
+            <td>${new Date(cred.dateAdded).toLocaleDateString()}</td>
+            <td>
+                <button class="button button-primary" onclick="showUpdateCredentialForm('${escapeHtml(cred.serviceName)}', '${escapeHtml(cred.username)}')">
+                    Update
+                </button>
+                <button class="button button-danger" onclick="removeCredential('${escapeHtml(cred.serviceName)}')">
+                    Remove
+                </button>
+            </td>
+        `;
+            tbody.appendChild(row);
+        });
+    }
+
+    function showUpdateCredentialForm(serviceName, username) {
+        const password = prompt('Enter new password for ' + serviceName);
+        if (password) {
+            updateCredentialPassword(serviceName, username, password);
+        }
+    }
+
+    async function updateCredentialPassword(serviceName, username, password) {
+        try {
+            const response = await fetch(`/api/credentials/${currentUser}/${serviceName}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ password })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                showMessage('Password updated successfully!', false);
+                loadCredentials();
+            } else {
+                showMessage(data.message || 'Error updating password', true);
+            }
+        } catch (error) {
+            showMessage('Error updating password', true);
+        }
+    }
+
+    async function handleAddCredential(event) {
+        event.preventDefault();
+
+        const serviceName = document.getElementById('serviceName').value;
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+
+        try {
+            const response = await fetch('/api/credentials', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    userName: currentUser,
+                    serviceName,
+                    serviceUsername: username,
+                    servicePassword: password
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                showMessage('Credential added successfully!', false);
+                document.getElementById('addCredentialForm').reset();
+                loadCredentials();
+            } else {
+                showMessage(data.message || 'Error adding credential', true);
+            }
+        } catch (error) {
+            showMessage('Error adding credential', true);
+        }
+    }
+
+    async function removeCredential(serviceName) {
+        if (!confirm(`Are you sure you want to remove the credentials for ${serviceName}?`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/credentials/${currentUser}/${serviceName}`, {
+                method: 'DELETE'
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                showMessage('Credential removed successfully!', false);
+                loadCredentials();
+            } else {
+                showMessage(data.message || 'Error removing credential', true);
+            }
+        } catch (error) {
+            showMessage('Error removing credential', true);
+        }
+    }
+
+    function togglePassword(button) {
+        const cell = button.parentElement;
+        const hidden = cell.querySelector('.password-hidden');
+        const visible = cell.querySelector('.password-visible');
+
+        if (hidden.classList.contains('hidden')) {
+            hidden.classList.remove('hidden');
+            visible.classList.add('hidden');
+            button.textContent = 'Show';
+        } else {
+            hidden.classList.add('hidden');
+            visible.classList.remove('hidden');
+            button.textContent = 'Hide';
+        }
+    }
+
+    function showMessage(message, isError) {
+        const messageDiv = document.getElementById('formMessage');
+        messageDiv.textContent = message;
+        messageDiv.className = isError ? 'error-message' : 'success-message';
+        setTimeout(() => {
+            messageDiv.textContent = '';
+            messageDiv.className = '';
+        }, 3000);
+    }
+
+    function logout() {
+        window.location.href = '/';
+    }
+
+    function escapeHtml(unsafe) {
+        return unsafe
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    document.getElementById('newPassword').addEventListener('input', async function(e) {
+        const password = e.target.value;
+        if (!password) {
+            updatePasswordStrengthUI(0, [], false);
+            return;
+        }
+
+        try {
+            const response = await fetch('/check-password-strength', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    password,
+                    username: currentUser
+                }),
+            });
+
+            const data = await response.json();
+            updatePasswordStrengthUI(data.score, data.feedback, data.isValid);
+        } catch (error) {
+            console.error('Error checking password strength:', error);
+        }
+    });
+
+    function updatePasswordStrengthUI(score, feedback, isValid) {
+        const form = document.querySelector('.update-password-form');
+        const strengthBar = form.querySelector('.strength-bar');
+        const feedbackElement = form.querySelector('.password-feedback');
+        const submitButton = form.querySelector('button[type="submit"]');
+
+        strengthBar.className = 'strength-bar';
+        strengthBar.classList.add(`strength-${score}`);
+
+        feedbackElement.innerHTML = feedback.join('<br>');
+        feedbackElement.style.display = 'block';
+
+        form.querySelector('.password-strength').style.display = 'block';
+
+        submitButton.disabled = !isValid;
+        submitButton.style.opacity = isValid ? '1' : '0.5';
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Password System</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background-image: url('/images/background.jpg');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+    .container {
+      background-color: rgba(255, 255, 255, 0.9);
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      width: 300px;
+      backdrop-filter: blur(5px);
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    .button-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    button {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    #loginBtn {
+      background-color: #1877f2;
+      color: white;
+    }
+    #registerBtn {
+      background-color: #42b72a;
+      color: white;
+    }
+    .error-message {
+      color: red;
+      margin-top: 10px;
+      text-align: center;
+    }
+    .password-strength {
+      margin-top: 5px;
+      height: 5px;
+      background-color: #ddd;
+      border-radius: 3px;
+      overflow: hidden;
+      display: none;
+    }
+    .strength-bar {
+      height: 100%;
+      width: 0;
+      transition: width 0.3s ease-in-out;
+    }
+    .strength-0 { width: 0%; background-color: #ff4444; }
+    .strength-1 { width: 20%; background-color: #ff4444; }
+    .strength-2 { width: 40%; background-color: #ffa700; }
+    .strength-3 { width: 60%; background-color: #ffbb00; }
+    .strength-4 { width: 80%; background-color: #9ccc65; }
+    .strength-5 { width: 100%; background-color: #43a047; }
+    .password-feedback {
+      font-size: 12px;
+      margin-top: 5px;
+      color: #666;
+      display: none;
+    }
+    .generate-password-btn {
+      background-color: #6c757d;
+      color: white;
+      padding: 5px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+      margin-top: 5px;
+      display: none;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="form-group">
+    <label for="username">Username:</label>
+    <input type="text" id="username" name="username" required>
+  </div>
+
+  <div id="passwordField" class="form-group">
+    <label for="password">Password:</label>
+    <input type="password" id="password" name="password" required>
+    <div class="password-strength">
+      <div class="strength-bar"></div>
+    </div>
+    <div class="password-feedback"></div>
+    <button type="button" class="generate-password-btn" onclick="generatePassword()">Generate Strong Password</button>
+  </div>
+
+  <div id="updatePasswordFields" style="display: none;">
+    <div class="form-group">
+      <label for="oldPassword">Old Password:</label>
+      <input type="password" id="oldPassword" name="oldPassword">
+    </div>
+    <div class="form-group">
+      <label for="newPassword">New Password:</label>
+      <input type="password" id="newPassword" name="newPassword">
+      <div class="password-strength">
+        <div class="strength-bar"></div>
+      </div>
+      <div class="password-feedback"></div>
+      <button type="button" class="generate-password-btn" onclick="generatePassword('newPassword')">Generate Strong Password</button>
+    </div>
+  </div>
+
+  <div id="registerFields" style="display: none;">
+    <div class="form-group">
+      <label for="email">Email:</label>
+      <input type="email" id="email" name="email">
+    </div>
+    <div class="form-group">
+      <label for="fullName">Full Name:</label>
+      <input type="text" id="fullName" name="fullName">
+    </div>
+  </div>
+
+  <div class="button-group">
+    <button id="loginBtn" onclick="handleLogin()">Login</button>
+    <button id="registerBtn" onclick="toggleRegister()">Register</button>
+    <button id="updatePasswordBtn" onclick="toggleUpdatePassword()">Update Password</button>
+  </div>
+
+  <div id="errorMessage" class="error-message"></div>
+</div>
+
+<script>
+  let isRegistering = false;
+  let passwordTimeout;
+  let currentPasswordStrength = { score: 0, isValid: false };
+  let isUpdatingPassword = false;
+
+
+  function toggleUpdatePassword() {
+    isUpdatingPassword = !isUpdatingPassword;
+    const updateFields = document.getElementById('updatePasswordFields');
+    const updateBtn = document.getElementById('updatePasswordBtn');
+    const loginBtn = document.getElementById('loginBtn');
+    const registerBtn = document.getElementById('registerBtn');
+    const passwordField = document.getElementById('passwordField');
+    const password = document.getElementById('password');
+    const strengthElements = document.querySelectorAll('.password-strength, .password-feedback, .generate-password-btn');
+
+    if (isUpdatingPassword) {
+      updateFields.style.display = 'block';
+      updateBtn.textContent = 'Submit Update';
+      loginBtn.textContent = 'Back';
+      registerBtn.style.display = 'none';
+      passwordField.style.display = 'none';
+      password.value = '';
+      strengthElements.forEach(el => el.style.display = 'block');
+      handleUpdatePassword();
+    } else {
+      if (!isUpdatingPassword) {
+        handleUpdatePassword();
+      }
+      updateFields.style.display = 'none';
+      updateBtn.textContent = 'Update Password';
+      loginBtn.textContent = 'Login';
+      registerBtn.style.display = 'block';
+      passwordField.style.display = 'block';
+      strengthElements.forEach(el => el.style.display = 'none');
+    }
+  }
+  async function handleUpdatePassword() {
+    const username = document.getElementById('username').value;
+    const oldPassword = document.getElementById('oldPassword').value;
+    const newPassword = document.getElementById('newPassword').value;
+    const errorMessage = document.getElementById('errorMessage');
+
+
+
+    if (!username || !oldPassword || !newPassword) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/update-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username, oldPassword, newPassword }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        errorMessage.style.color = 'green';
+        errorMessage.textContent = 'Password updated successfully!';
+        document.getElementById('oldPassword').value = '';
+        document.getElementById('newPassword').value = '';
+      } else {
+        errorMessage.textContent = data.message;
+      }
+    } catch (error) {
+      errorMessage.textContent = 'An error occurred while updating password';
+    }
+  }
+
+  function toggleRegister() {
+    isRegistering = !isRegistering;
+    const registerFields = document.getElementById('registerFields');
+    const registerBtn = document.getElementById('registerBtn');
+    const loginBtn = document.getElementById('loginBtn');
+    const updatePasswordBtn = document.getElementById('updatePasswordBtn');
+    const strengthElements = document.querySelectorAll('.password-strength, .password-feedback, .generate-password-btn');
+
+    if (isRegistering) {
+      registerFields.style.display = 'block';
+      registerBtn.textContent = 'Submit Registration';
+      loginBtn.textContent = 'Back';
+      updatePasswordBtn.style.display = 'none';
+      strengthElements.forEach(el => el.style.display = 'block');
+      document.getElementById('password').value = '';
+    } else {
+      registerFields.style.display = 'none';
+      registerBtn.textContent = 'Register';
+      loginBtn.textContent = 'Login';
+      updatePasswordBtn.style.display = 'block';
+      strengthElements.forEach(el => el.style.display = 'none');
+      document.getElementById('password').value = '';
+    }
+  }
+
+  document.getElementById('password').addEventListener('input', function(e) {
+    if (isRegistering) {
+      clearTimeout(passwordTimeout);
+      passwordTimeout = setTimeout(() => checkPasswordStrength(e.target.value), 500);
+    }
+  })
+
+  async function checkPasswordStrength(password, fieldId = 'password') {
+    if (!password) {
+      updateStrengthUI(0, [], false, fieldId);
+      return;
+    }
+
+    try {
+      const username = document.getElementById('username').value;
+      const response = await fetch('/check-password-strength', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ password, username }),
+      });
+
+      const data = await response.json();
+      if (fieldId === 'password') {
+        currentPasswordStrength = data;
+      }
+      updateStrengthUI(data.score, data.feedback, data.isValid, fieldId);
+    } catch (error) {
+      console.error('Error checking password strength:', error);
+    }
+  }
+
+  function updateStrengthUI(score, feedback, isValid, fieldId = 'password') {
+    const container = fieldId === 'password' ?
+            document.getElementById('passwordField') :
+            document.getElementById('updatePasswordFields');
+
+    const strengthBar = container.querySelector('.strength-bar');
+    const feedbackElement = container.querySelector('.password-feedback');
+
+    strengthBar.className = 'strength-bar';
+    strengthBar.classList.add(`strength-${score}`);
+
+    feedbackElement.innerHTML = feedback.join('<br>');
+
+    // Only handle the register button if we're in registration mode
+    if (fieldId === 'password' && isRegistering) {
+      const registerBtn = document.getElementById('registerBtn');
+      registerBtn.disabled = !isValid;
+      registerBtn.style.opacity = isValid ? '1' : '0.5';
+    }
+  }
+
+
+  async function generatePassword(fieldId = 'password') {
+    try {
+      const response = await fetch('/generate-password');
+      const data = await response.json();
+
+      const passwordInput = document.getElementById(fieldId);
+      passwordInput.value = data.password;
+      passwordInput.type = 'text';
+
+      await checkPasswordStrength(data.password, fieldId);
+
+      setTimeout(() => {
+        passwordInput.type = 'password';
+      }, 3000);
+    } catch (error) {
+      console.error('Error generating password:', error);
+    }
+  }
+
+  async function handleLogin() {
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    const errorMessage = document.getElementById('errorMessage');
+
+    if (isRegistering) {
+      toggleRegister();
+      return;
+    }
+
+      if (isUpdatingPassword) {
+          toggleUpdatePassword();
+          return;
+      }
+
+    try {
+      const response = await fetch('/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username, password }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        errorMessage.style.color = 'green';
+        errorMessage.textContent = data.message;
+        window.location.href = data.redirectUrl;
+      } else {
+        errorMessage.textContent = data.message;
+      }
+    } catch (error) {
+      errorMessage.textContent = 'An error occurred during login';
+    }
+  }
+
+  async function handleRegister() {
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    const email = document.getElementById('email').value;
+    const fullName = document.getElementById('fullName').value;
+    const errorMessage = document.getElementById('errorMessage');
+
+    if (!currentPasswordStrength.isValid) {
+      errorMessage.textContent = 'Please choose a stronger password';
+      return;
+    }
+
+    try {
+      const response = await fetch('/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username, password, email, fullName }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        errorMessage.style.color = 'green';
+        errorMessage.textContent = 'Registration successful!';
+        toggleRegister();
+      } else {
+        errorMessage.textContent = data.message;
+      }
+    } catch (error) {
+      errorMessage.textContent = 'An error occurred during registration';
+    }
+  }
+
+  document.getElementById('registerBtn').onclick = function() {
+    if (isRegistering) {
+      handleRegister();
+    } else {
+      toggleRegister();
+    }
+  };
+
+  document.getElementById('newPassword').addEventListener('input', function(e) {
+    if (isUpdatingPassword) {
+      clearTimeout(passwordTimeout);
+      passwordTimeout = setTimeout(() => checkPasswordStrength(e.target.value, 'newPassword'), 500);
+    }
+  });
+</script>
+</body>
+</html>
